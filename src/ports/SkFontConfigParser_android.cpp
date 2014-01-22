@@ -11,6 +11,7 @@
 
 #include <expat.h>
 #include <sys/system_properties.h>
+#include <unistd.h>
 
 #define SYSTEM_FONTS_FILE "/system/etc/system_fonts.xml"
 #define FALLBACK_FONTS_FILE "/system/etc/fallback_fonts.xml"
@@ -40,6 +41,14 @@ struct FamilyData {
     FontFamily *currentFamily;         // The current family being created
     FontFileInfo *currentFontInfo;     // The current fontInfo being created
     int currentTag;                    // A flag to indicate whether we're in nameset/fileset tags
+};
+
+static const uint32_t MONOSPACE_FONTS_COUNT = 4;
+static const char* MONOSPACE_FONTS[] = {
+    "monospace",
+    "courier",
+    "courier new",
+    "monaco"
 };
 
 /**
@@ -255,13 +264,65 @@ static void getFallbackFontFamilies(SkTDArray<FontFamily*> &fallbackFonts) {
     }
 }
 
+static void getThemeFontFamilies(SkTDArray<FontFamily*> &fontFamilies) {
+    parseConfigFile(THEME_FONTS_FILE, fontFamilies);
+}
+
+static bool hasMonospaceFont(SkTDArray<FontFamily*> &fontFamilies) {
+    for (int i = 0; i < fontFamilies.count(); i++) {
+        FontFamily* family = fontFamilies[i];
+        for (int j = 0; j < family->fNames.count(); j++) {
+            const char* name = family->fNames[j];
+            for (int k = 0; k < MONOSPACE_FONTS_COUNT; k++) {
+                if (strcmp(name, MONOSPACE_FONTS[k]) == 0) return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+static void addMonospaceFontToThemeFonts(SkTDArray<FontFamily*> &themeFontFamilies,
+                                         SkTDArray<FontFamily*> &systemFontFamilies) {
+    for (int i = 0; i < systemFontFamilies.count(); i++) {
+        FontFamily* family = systemFontFamilies[i];
+        for (int j = 0; j < family->fNames.count(); j++) {
+            const char* name = family->fNames[j];
+            for (int k = 0; k < MONOSPACE_FONTS_COUNT; k++) {
+                if (strcmp(name, MONOSPACE_FONTS[k]) == 0) {
+                    systemFontFamilies[i]->fIsFallbackMonospaceFont = true;
+                    *themeFontFamilies.append() = systemFontFamilies[i];
+                    return;
+                }
+            }
+        }
+    }
+}
+
 /**
  * Loads data on font families from various expected configuration files. The
  * resulting data is returned in the given fontFamilies array.
  */
 void SkFontConfigParser::GetFontFamilies(SkTDArray<FontFamily*> &fontFamilies) {
 
-    getSystemFontFamilies(fontFamilies);
+    //Determine if we want to use themes
+    bool use_theme_font = false;
+    if (access(THEME_FONTS_FILE, R_OK) == 0) {
+        use_theme_font = true;
+    }
+
+    if (use_theme_font) {
+        getThemeFontFamilies(fontFamilies);
+        if (!hasMonospaceFont(fontFamilies) && fontFamilies.count() > 0) {
+            SkTDArray<FontFamily*> systemFontFamilies;
+            getSystemFontFamilies(systemFontFamilies);
+            addMonospaceFontToThemeFonts(fontFamilies, systemFontFamilies);
+        }
+    }
+
+    if (!use_theme_font || fontFamilies.count() == 0) {
+        getSystemFontFamilies(fontFamilies);
+    }
 
     // Append all the fallback fonts to system fonts
     SkTDArray<FontFamily*> fallbackFonts;
