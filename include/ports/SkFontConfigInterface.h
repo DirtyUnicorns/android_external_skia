@@ -112,6 +112,9 @@ public:
      * can be created which will reload default fonts.
      */
     static void ClearSingletonInterface();
+
+    typedef SkRefCnt INHERITED;
+
 };
 
 #endif
