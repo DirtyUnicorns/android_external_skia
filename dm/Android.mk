@@ -5,8 +5,6 @@
 #
 ###############################################################################
 
-ifeq ($(call is-vendor-board-platform,QCOM),true)
-
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_CFLAGS += \
@@ -542,5 +540,3 @@ LOCAL_MODULE := \
 
 include external/stlport/libstlport.mk
 include $(BUILD_EXECUTABLE)
-
-endif
