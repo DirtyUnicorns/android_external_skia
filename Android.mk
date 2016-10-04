@@ -44,10 +44,9 @@ LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
 #LOCAL_FDO_SUPPORT := true
-ifneq ($(strip $(TARGET_FDO_CFLAGS)),)
-	# This should be the last -Oxxx specified in LOCAL_CFLAGS
-	LOCAL_CFLAGS += -O3
-endif
+
+# This should be the last -Oxxx specified in LOCAL_CFLAGS
+LOCAL_CFLAGS += -O3
 
 LOCAL_ARM_MODE := thumb
 # used for testing
